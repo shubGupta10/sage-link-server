@@ -2,6 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import userRouter from './routes/userRoute.js';
+import youtubeRouter from './routes/youtubeRouter.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -14,6 +15,7 @@ app.use(cors({
 }));
 
 app.use("/api/users", userRouter);
+app.use("/api/youtube", youtubeRouter);
 
 app.get("/", (req, res) => {
     res.send("Hello, World!");
