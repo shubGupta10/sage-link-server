@@ -35,12 +35,12 @@ export async function uploadDocument(req, res) {
                 createdAt: new Date().toISOString(),
             };
 
-            await redisClient.set(redisKey, JSON.stringify(documentData), 'EX', 60 * 60 * 24 * 7);
+            await redisClient.set(redisKey, JSON.stringify(documentData), { ex: 60 * 60 * 24 * 7 });
 
             return res.status(200).json({
                 message: "Document uploaded successfully.",
                 fileId: fileHash,  
-                userId,
+                userId: userId,
             });
         } catch (error) {
             console.error("Error uploading document:", error);
