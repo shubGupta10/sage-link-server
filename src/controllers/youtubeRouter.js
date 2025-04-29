@@ -82,7 +82,7 @@ export async function chatWithLink(req, res) {
       return res.status(404).json({ message: "Transcript not found" });
     }
 
-    const transcriptObj = JSON.parse(transcriptData);
+    const transcriptObj = transcriptData;
 
 
     // Generate AI response
