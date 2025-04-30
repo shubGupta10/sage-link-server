@@ -1,9 +1,8 @@
-import { YoutubeTranscript } from 'youtube-transcript'
 import redisClient from '../config/redis.js';
 import { extractVideoId } from '../utils/extractVideoId.js';
 import { v4 as uuidv4 } from 'uuid'
 import { generateResponse } from '../utils/generateResponse.js';
-import { translateToEnglish } from '../utils/translateToEnglish.js';
+import { YoutubeLoader } from "@langchain/community/document_loaders/web/youtube";
 
 export async function getYoutubeVideoURL(req, res) {
   try {
@@ -13,31 +12,32 @@ export async function getYoutubeVideoURL(req, res) {
       return res.status(400).json({ message: "Video URL and User ID are required" });
     }
 
+    // Extract video ID from the URL
     const videoId = extractVideoId(videoURL);
     if (!videoId) {
       return res.status(400).json({ message: "Invalid video URL" });
     }
 
-    // Try fetching English transcript first
-    let transcript;
+    // Load YouTube video transcript and metadata using LangChain
+    let docs;
     try {
-      transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'en', autoCorrect: true });
+      const loader = YoutubeLoader.createFromUrl(videoURL, {
+        language: "en",  // Set the language for the transcript
+        addVideoInfo: true,  // Include video info like title, description, etc.
+      });
+
+      // Load the transcript and video metadata
+      docs = await loader.load();
+      if (!docs || docs.length === 0) {
+        throw new Error("Transcript not available");
+      }
+
     } catch (err) {
-      console.warn("English transcript not found, trying Hindi...");
-      const hindiTranscript = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'hi' });
-      const translated = await Promise.all(
-        hindiTranscript.map(async (item) => {
-          const translatedText = await translateToEnglish(item.text);
-          return { ...item, text: translatedText };
-        })
-      );
-      transcript = translated;
+      console.warn("Error fetching transcript with LangChain:", err);
+      return res.status(404).json({ message: "Transcript not available or video is restricted." });
     }
 
-    if (!transcript || transcript.length === 0) {
-      return res.status(404).json({ message: "Transcript not found" });
-    }
-
+    // Prepare data for Redis caching
     const transcriptId = uuidv4();
     const redisKey = `transcript:${userId}:${videoId}`;
 
@@ -45,16 +45,17 @@ export async function getYoutubeVideoURL(req, res) {
       userId,
       videoId,
       transcriptId,
-      transcript,
+      transcript: docs,
       createdAt: new Date().toISOString(),
     };
 
+    // Store transcript in Redis with an expiration time of 1 hour
     await redisClient.set(redisKey, JSON.stringify(dataStore), { ex: 3600 });
 
-
+    // Send success response
     return res.status(200).json({
       message: "Transcript fetched successfully",
-      transcript,
+      transcript: docs,
       transcriptId,
       videoId,
       userId,
@@ -86,7 +87,7 @@ export async function chatWithLink(req, res) {
 
 
     // Generate AI response
-    const response = await generateResponse(userResponse, transcriptObj.transcript);
+    const response = await generateResponse(userResponse, transcriptObj.transcript[0].pageContent);
     return res.status(200).json({ message: "Response generated successfully", response });
 
   } catch (error) {
