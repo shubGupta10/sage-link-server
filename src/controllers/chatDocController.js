@@ -3,7 +3,6 @@ import { generateResponseWithDocument } from "../utils/generateResponse.js";
 import crypto from "crypto";
 
 
-import crypto from 'crypto';
 import { redisClient } from './redisClient';
 
 export async function uploadDocument(req, res) {
