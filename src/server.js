@@ -4,10 +4,12 @@ import dotenv from 'dotenv'
 import userRouter from './routes/userRoute.js';
 import youtubeRouter from './routes/youtubeRouter.js';
 import chatdocRouter from './routes/chatwithDocRouter.js';
-
+import job from './utils/cron.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 dotenv.config();
+
+job.start();
 app.use(express.json());
 app.use(cors({
     origin: process.env.FRONTEND_URL,
