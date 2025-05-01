@@ -3,6 +3,7 @@ import { extractVideoId } from '../utils/extractVideoId.js';
 import { v4 as uuidv4 } from 'uuid'
 import { generateResponse } from '../utils/generateResponse.js';
 import { YoutubeLoader } from "@langchain/community/document_loaders/web/youtube";
+import prisma from '../config/prisma.js'
 
 export async function getYoutubeVideoURL(req, res) {
   try {
@@ -51,6 +52,27 @@ export async function getYoutubeVideoURL(req, res) {
 
     // Store transcript in Redis with an expiration time of 1 hour
     await redisClient.set(redisKey, JSON.stringify(dataStore), { ex: 3600 });
+
+    //save the response into database
+    await prisma.transcript.upsert({
+      where: {
+        userId_videoId: {
+          userId,
+          videoId
+        },
+      },
+      update: {
+        transcript: docs,
+        createdAt: new Date()
+      },
+      create: {
+        id: transcriptId,
+        userId,
+        videoId,
+        transcript: docs,
+        createdAt: new Date()
+      }
+    })
 
     // Send success response
     return res.status(200).json({
