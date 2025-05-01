@@ -2,9 +2,6 @@ import redisClient from "../config/redis.js";
 import { generateResponseWithDocument } from "../utils/generateResponse.js";
 import crypto from "crypto";
 
-
-import { redisClient } from './redisClient';
-
 export async function uploadDocument(req, res) {
     try {
         const { text, userId } = req.body;
